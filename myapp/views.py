@@ -2,7 +2,7 @@ import google.generativeai as genai
 import openai
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from .models import RoomTable, RestaurantTable, RentedVehicle, Spot
+from .models import ChatHistory, RoomTable, RestaurantTable, RentedVehicle, Spot
 from .serializers import RoomTableSerializer, RestaurantTableSerializer, RentedVehicleSerializer, SpotSerializer
 
 # Initialize Google Gemini API
@@ -25,7 +25,8 @@ class ItineraryView(APIView):
                 'paid_spots': []
             },
             'restaurants': [],
-            'chatbot_response': ""  # This will store the chatbot-like response
+            'chatbot_response': "",
+            "chat_history": [],   # This will store the chatbot-like response
         }
 
         # Fetch data from the models and filter based on budget if needed
@@ -70,9 +71,35 @@ class ItineraryView(APIView):
             # Call Gemini API to generate the response
             gemini_response = genai.GenerativeModel("gemini-1.5-flash").generate_content(prompt)
             gemini_chatbot_response = gemini_response.text.strip()
+            print(user_query)
+            ChatHistory.objects.create(
+                user_query=user_query,
+                chatbot_response=gemini_chatbot_response,
+            )
 
             # Update response data with the chatbot response
             response_data['chatbot_response'] = gemini_chatbot_response
+                        # Retrieve the chat history
+            chat_history = ChatHistory.objects.order_by("-timestamp").values(
+                "user_query", "chatbot_response", "timestamp"
+            )
+            response_data.update(
+                {
+                    "rooms": rooms_list,
+                    "rented_vehicles": vehicles_list,
+                    "nearby_spots": {
+                        "free_entry_spots": free_spots_list,
+                        "paid_spots": paid_spots_info,
+                    },
+                    "restaurants": restaurants_list,
+                    "chatbot_response": gemini_chatbot_response,
+                    "chat_history": list(chat_history),
+                }
+            )
+
+            
+
+
 
             # Return the chatbot-like response with the itinerary data
             return Response(response_data, status=200)

@@ -33,3 +33,13 @@ class Spot(models.Model):
     
 
     location = models.CharField(max_length=100, null=True, blank=True)
+from django.db import models
+
+class ChatHistory(models.Model):
+
+    user_query = models.TextField()  # User's query
+    chatbot_response = models.TextField()  # Chatbot's response
+    timestamp = models.DateTimeField(auto_now_add=True)  # Timestamp of the interaction
+
+    def __str__(self):
+        return f"Chat at {self.timestamp}"
